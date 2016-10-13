@@ -17,5 +17,4 @@
 @interface MDrawComment : MDrawText<UIAlertViewDelegate>
 
 @property (nonatomic,weak) id<MDrawCommentDelegate> delegate;
-
 @end

@@ -21,23 +21,31 @@
 
 #import "MDrawView.h"
 #import "MUndoManager.h"
+#import "UIImage+Crop.h"
 
 @implementation MDrawView
 {
     NSMutableArray *_tools;
     Class _drawToolClass;
     MUndoManager *_undoManager;
+    CGLayerRef drawingLayer,imageLayer;
+    CGContextRef layerContext,imageLayerContext;
     BOOL _isMoved; // Is mouse or figure moved
     CGFloat _lineWidth;
     BOOL _enableGesture;
     BOOL _showMeasurement;
     NSString *_unit;
+    UIImage *scaledImage;
 }
 
-@synthesize color;
 @synthesize calibration = _calibration;
 @synthesize isDirty = _isDirty;
 
+-(void)setColor:(UIColor *)color {
+    _color = color;
+    _activeTool.color = _color;
+    [self setNeedsDisplay];
+}
 
 -(id)initWithCoder:(NSCoder *)aDecoder
 {
@@ -46,17 +54,43 @@
         // Initialization code
         _tools = [[NSMutableArray alloc] init];
         _undoManager = [[MUndoManager alloc] initWithTools:_tools];
+
+        self.color = [UIColor redColor];
+        self.backgroundColor = [UIColor clearColor];
         
-        self.color = [UIColor colorWithRed:0 green:255 blue:0 alpha:0.6];
         _lineWidth = 3;
         _calibration = 0;
         
         _enableGesture = YES;
         [self initGestures];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(receivedRotate:) name:UIDeviceOrientationDidChangeNotification object:NULL];
+
     }
     
     return self;
 }
+
+-(void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    
+    if(drawingLayer)
+        CGLayerRelease(drawingLayer);
+    
+    if(imageLayer)
+        CGLayerRelease(imageLayer);
+}
+
+-(void) receivedRotate: (NSNotification*) notification {
+    CGRect viewRect = AVMakeRectWithAspectRatioInsideRect(_image.size, self.superview.frame);
+    self.frame = CGRectMake(viewRect.origin.x, viewRect.origin.y, ceil(viewRect.size.width), ceil(viewRect.size.height));
+    for (MDrawTool *tool in _tools)
+    {
+        [tool convertPoints];
+    }
+
+    [self setNeedsDisplay];
+}
+
 
 - (id)initWithFrame:(CGRect)frame
 {
@@ -176,6 +210,7 @@
     if([_undoManager undo])
     {
         [self setNeedsDisplay];
+        [self.toolDelegate selectPreviousTool];
         return YES;
     }
     
@@ -193,19 +228,50 @@
     return NO;
 }
 
-- (void)drawRect:(CGRect)rect
-{
-    if (_tools && _tools.count > 0) {
-        // Drawing code
-        CGContextRef ctx = UIGraphicsGetCurrentContext();
-        //CGContextClearRect(ctx,self.frame);
-        for (MDrawTool *tool in _tools)
-        {
-            [tool draw:ctx];
-            [tool drawMeasurement:ctx];
-        }
+- (void)drawRect:(CGRect)rect {
+    
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    if (!context)
+        return;
+    float scale = [UIScreen mainScreen].scale;
+    CGRect bounds = CGRectMake(0, 0, rect.size.width *scale, rect.size.height *scale);
+    
+    if(drawingLayer)
+        CGLayerRelease(drawingLayer);
+    
+    drawingLayer = CGLayerCreateWithContext(context, bounds.size, NULL);
+    layerContext = CGLayerGetContext(drawingLayer);
+    CGContextScaleCTM(layerContext, scale, scale);
+    self.viewRect = CGRectMake(0, 0, self.bounds.size.width, self.bounds.size.height);
+    
+    if(imageLayer)
+        CGLayerRelease(imageLayer);
+    imageLayer = CGLayerCreateWithContext(context, bounds.size, NULL);
+    imageLayerContext = CGLayerGetContext(imageLayer);
+
+    UIGraphicsBeginImageContext (bounds.size);
+    
+    CGContextTranslateCTM(imageLayerContext, 0, bounds.size.height);
+    CGContextScaleCTM(imageLayerContext, 1.0, -1.0);
+    CGContextDrawImage(imageLayerContext, bounds, scaledImage.CGImage);
+    UIGraphicsEndImageContext();
+    
+    CGContextRef ctx = CGLayerGetContext(drawingLayer);
+
+    for (MDrawTool *tool in _tools)
+    {
+        [tool draw:ctx];
     }
+    
+    CGContextDrawLayerInRect(context, self.viewRect, imageLayer);
+    CGContextDrawLayerInRect(context, self.viewRect, drawingLayer);
+
+    UIGraphicsEndImageContext();
+
+    if ([self.imageCreationDelegate respondsToSelector:@selector(imageCreateCompleted)])
+        [self.imageCreationDelegate imageCreateCompleted];
 }
+
 
 -(void)beginDrawingForType:(Class)toolType
 {
@@ -225,6 +291,18 @@
     }
     
     _drawToolClass = toolType;
+    _drawing = YES;
+}
+
+-(void)clearDragHandles:(Class)toolType {
+    for (MDrawTool *tool in _tools)
+    {
+        tool.selected = NO;
+        [self setNeedsDisplay];
+    }
+    _activeTool = Nil;
+    _drawToolClass = toolType;
+
     _drawing = YES;
 }
 
@@ -264,6 +342,43 @@
     }
 }
 
+- (UIImage*) markedUpImage
+{
+    
+    [self drawRect:self.frame];
+    UIImage *markup = [self getDrawingImage];
+
+    CGRect imageRect = CGRectMake(0, 0, ceil(_image.size.width), ceil(_image.size.height));
+    UIGraphicsBeginImageContextWithOptions(_image.size, NO, [UIScreen mainScreen].scale);
+    [_image drawInRect:imageRect];
+    [markup drawInRect:imageRect];
+    
+    UIImage *editedImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return editedImage;
+}
+
+
+- (UIImage*)getDrawingImage {
+
+
+    UIGraphicsBeginImageContext (self.viewRect.size);
+
+    CGContextRef ctx = UIGraphicsGetCurrentContext();
+
+    for (MDrawTool *tool in _tools)
+    {
+        [tool draw:ctx];
+    }
+
+    UIImage *editedImage = UIGraphicsGetImageFromCurrentImageContext();
+
+    UIGraphicsEndImageContext();
+
+
+    return editedImage;
+}
+
 #pragma mark - private methods
 
 -(void)initGestures
@@ -284,7 +399,8 @@
     }
     else
     {
-        [self selectTool:point];
+        if (![self selectTool:point])
+            [self.toolDelegate selectPreviousTool];
     }
 }
 
@@ -340,6 +456,7 @@
             _activeTool.showMeasurement = self.showMeasurement;
             _activeTool.unit = self.unit;
             _activeTool.calibration = self.calibration;
+            _activeTool.parentView = self;
             //Comment tool is special, it should interate with alert views.
             if([_activeTool isKindOfClass:[MDrawComment class]])
             {
@@ -382,11 +499,15 @@
 {
     if(self.drawing)
     {
-        [self.activeTool drawUp:point];
+        if(_isMoved){
+            [self.activeTool drawUp:point frame:self.frame];
         
-        if(self.activeTool.finalized)
-        {
-            _drawing = NO;
+            if(self.activeTool.finalized){
+                _drawing = NO;
+            }
+        } else {
+            if (![self selectTool:point])
+                [self.toolDelegate selectPreviousTool];
         }
     }
     else
@@ -398,7 +519,8 @@
         else
         {
             //Click or tap
-            [self selectTool:point];
+            if (![self selectTool:point])
+                [self.toolDelegate selectPreviousTool];
         }
         
     }
@@ -410,12 +532,13 @@
 
 #pragma mark - hit tests
 
--(void)selectTool:(CGPoint)point
+-(BOOL)selectTool:(CGPoint)point
 {
     BOOL hasSelected = NO;
     _activeTool = Nil;
-    
-    for (int i = _tools.count -1; i >= 0; i--)
+    _drawing = YES;
+
+    for (NSInteger i = _tools.count -1; i >= 0; i--)
     {
         MDrawTool *tool = [_tools objectAtIndex:i];
         
@@ -425,14 +548,17 @@
             
             tool.selected = YES;
             _activeTool = tool;
+            _drawing = NO;
         }
         else
         {
             tool.selected = NO;
+            
         }
     }
     
     [self setNeedsDisplay];
+    return hasSelected;
 }
 
 #pragma mark - draw comment protocol
@@ -447,6 +573,30 @@
     {
         [self deleteCurrentTool];
     }
+}
+
+//-(void)rotateImage {
+//    [self setImage:_image];
+//}
+
+- (void) setImage:(UIImage*)sketch
+{
+    CGRect imageRect = AVMakeRectWithAspectRatioInsideRect(sketch.size, self.superview.frame);
+    imageRect = CGRectMake(imageRect.origin.x, imageRect.origin.y, ceil(imageRect.size.width), ceil(imageRect.size.height));
+    
+    self.frame = imageRect;
+    _image = [sketch rotateUIImage];
+    
+    
+    UIImageView* imageView = [[UIImageView alloc] initWithFrame:imageRect];
+    imageView.contentMode = self.contentMode;
+    imageView.image = _image;
+    imageView.backgroundColor = [UIColor clearColor];
+    UIGraphicsBeginImageContextWithOptions(self.bounds.size, NO, 0.0);
+    [imageView.layer renderInContext:UIGraphicsGetCurrentContext()];
+    scaledImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
 }
 
 

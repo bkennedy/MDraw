@@ -35,8 +35,9 @@
     _endPoint = point;
 }
 
--(void)drawUp:(CGPoint)point
+-(void)drawUp:(CGPoint)point  frame:(CGRect)originFrame
 {
+    [self recordOrigin];
      _endPoint = point;
     [self finalize];
 }
@@ -150,6 +151,7 @@
         default:
             break;
     }
+    [self recordOrigin];
 }
 
 -(void)stopMoveHandle

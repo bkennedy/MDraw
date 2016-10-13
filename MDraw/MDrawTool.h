@@ -59,6 +59,7 @@
  **/
 @property (nonatomic,strong)UIColor *color;
 
+@property (nonatomic) CGRect originFrame;
 
 /**
  * Init the tool with a start point.
@@ -78,7 +79,7 @@
 /**
  * Draw mouse up (touchesEnd)
  **/
--(void)drawUp:(CGPoint)point;
+-(void)drawUp:(CGPoint)point  frame:(CGRect)originFrame;
 
 /**
  * Finalize the drawing
@@ -146,6 +147,9 @@
  */
 - (void)drawMeasurement:(CGContextRef)ctx;
 
+- (void)recordOrigin;
+
+- (void)convertPoints;
 @end
 
 /**
@@ -155,8 +159,12 @@
 {
 @protected
     BOOL _finalized;
-    CGPoint _startPoint, _endPoint;
+    CGPoint _startPoint,_endPoint;
+    CGPoint _originStartPoint, _originEndPoint;
     CGFloat _unitScale;
 }
+@property (nonatomic,assign) UIView *parentView;
 
+-(CGPoint) convertPoint: (CGPoint) point fromRect: (CGRect) fromRect toRect: (CGRect) toRect;
+-(void)convertFromScreenRect:(CGRect)fromRect toRect:(CGRect) toRect;
 @end

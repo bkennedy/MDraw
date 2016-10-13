@@ -39,16 +39,18 @@
 @synthesize showMeasurement;
 @synthesize calibration;
 @synthesize measureText;
+@synthesize originFrame;
 
 -(id)init
 {
     if(self = [super init])
     {
-        _handleFillColor = [UIColor colorWithRed:255 green:255 blue:255 alpha:0.6];
+        _handleFillColor = [UIColor colorWithRed:1 green:1 blue:1 alpha:0.6];
         self.lineWidth = 3;
         self.calibration = 0;
         self.unit = @"px";
         _unitScale = 1;
+        self.originFrame = CGRectZero;
     }
     
     return self;
@@ -93,8 +95,8 @@
 {
     return CGRectMake(MIN(_startPoint.x, _endPoint.x),
                       MIN(_startPoint.y, _endPoint.y),
-                      fabsf(_endPoint.x - _startPoint.x),
-                      fabsf(_endPoint.y - _startPoint.y));
+                      fabs(_endPoint.x - _startPoint.x),
+                      fabs(_endPoint.y - _startPoint.y));
 }
 
 -(void)drawDown:(CGPoint)point
@@ -105,8 +107,15 @@
 {
 }
 
--(void)drawUp:(CGPoint)point
+-(void)drawUp:(CGPoint)point  frame:(CGRect)originFrame; {
+    
+}
+
+-(void)recordOrigin
 {
+    self.originFrame = self.parentView.frame;
+    _originStartPoint = _startPoint;
+    _originEndPoint = _endPoint;
 }
 
 -(void)finalize:(CGPoint)point
@@ -135,6 +144,7 @@
 -(void)draw:(CGContextRef)ctx
 {
 }
+
 
 - (void)drawMeasurement:(CGContextRef)ctx
 {
@@ -182,5 +192,51 @@
     
     return result;
 }
+
+-(CGPoint) convertPoint: (CGPoint) point fromRect: (CGRect) fromRect toRect: (CGRect) toRect {
+    if (CGRectEqualToRect(fromRect, toRect)) {
+        return point;
+    }
+    return (CGPoint){
+        (toRect.size.width/fromRect.size.width) * point.x,
+        (toRect.size.height/fromRect.size.height) * point.y
+    };
+}
+
+-(void)convertFromScreenRect:(CGRect)fromRect toRect:(CGRect) toRect {
+    _startPoint = [self convertPoint:_originStartPoint fromRect:self.frame toRect:toRect];
+    _endPoint = [self convertPoint:_originEndPoint fromRect:self.frame toRect:toRect];
+
+}
+
+-(void)convertPoints {
+    UIDeviceOrientation  orientation = [UIDevice currentDevice].orientation;
+    if (orientation != UIDeviceOrientationPortraitUpsideDown) {
+        if (!CGRectIsEmpty(self.originFrame) && !CGRectEqualToRect(self.originFrame,self.parentView.frame)) {
+            _startPoint = [self convertPoint:_originStartPoint fromRect:self.originFrame toRect:self.parentView.frame];
+            _endPoint = [self convertPoint:_originEndPoint fromRect:self.originFrame toRect:self.parentView.frame];
+        } else {
+            _startPoint = _originStartPoint;
+            _endPoint = _originEndPoint;
+        }
+    }
+
+}
+
+//-(CGPoint)startPoint {
+//    CGPoint sPoint =  _startPoint;
+//    if (!CGRectIsEmpty(self.originFrame) && !CGRectEqualToRect(self.originFrame,self.parentView.frame)) {
+//        sPoint = [self convertPoint:_startPoint fromRect:self.originFrame toRect:self.parentView.frame];
+//    }
+//    return sPoint;
+//}
+//
+//-(CGPoint)endPoint {
+//    CGPoint ePoint = _endPoint;
+//    if (!CGRectIsEmpty(self.originFrame) && !CGRectEqualToRect(self.originFrame,self.parentView.frame)) {
+//        ePoint = [self convertPoint:_endPoint fromRect:self.originFrame toRect:self.parentView.frame];
+//    }
+//    return ePoint;
+//}
 
 @end

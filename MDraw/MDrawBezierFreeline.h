@@ -19,18 +19,10 @@
 //    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 //    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#import "MDrawTool_Subclass.h"
+#import "MDrawRect.h"
 
-@interface MDrawPolyline : MDrawTool
-{
-    @protected
-    NSMutableArray *_points;
-    NSArray        *_originPoints;
-    CGPoint _movePoint;
-    int _moveHandleIndex;
-    BOOL _closePath;
-}
-
-
-
+@interface MDrawBezierFreeline : MDrawRect
+@property (nonatomic,retain) UIBezierPath *path;
+@property (nonatomic,retain) NSMutableArray *points;
+@property (nonatomic,retain) NSArray *originPoints;
 @end

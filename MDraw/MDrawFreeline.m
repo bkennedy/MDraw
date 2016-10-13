@@ -70,8 +70,8 @@
     
     return CGRectMake(tl.x,
                       tl.y,
-                      fabsf(rb.x - tl.x),
-                      fabsf(rb.y - tl.y));
+                      fabs(rb.x - tl.x),
+                      fabs(rb.y - tl.y));
     
     
 }
@@ -81,8 +81,16 @@
     [_points addObject:[NSValue valueWithCGPoint:point]];
 }
 
--(void)drawUp:(CGPoint)point
+-(void)recordOrigin
 {
+    self.originFrame = self.parentView.frame;
+    self.originPoints = [NSArray arrayWithArray:_points];
+}
+
+
+-(void)drawUp:(CGPoint)point frame:(CGRect)originFrame
+{
+    [self recordOrigin];
     [_points addObject:[NSValue valueWithCGPoint:point]];
     [self finalize];
 }
@@ -120,6 +128,7 @@
             [_points replaceObjectAtIndex:i withObject:[NSValue valueWithCGPoint:p]];
         }
     }
+    [self recordOrigin];
 }
 
 -(void)draw:(CGContextRef)ctx
@@ -166,5 +175,26 @@
             [self unitConvert:length isSquare:NO],
             self.unit];
 }
+
+-(void)convertPoints {
+    UIDeviceOrientation  orientation = [UIDevice currentDevice].orientation;
+    if (orientation != UIDeviceOrientationPortraitUpsideDown) {
+        if (!CGRectIsEmpty(self.originFrame) && !CGRectEqualToRect(self.originFrame,self.parentView.frame)) {
+            [_points removeAllObjects];
+            for (NSValue *pointValue in self.originPoints) {
+                CGPoint point = [pointValue CGPointValue];
+                CGPoint newPoint = [self convertPoint:point fromRect:self.originFrame toRect:self.parentView.frame];
+                [_points addObject:[NSValue valueWithCGPoint:newPoint]];
+            }
+        } else {
+            _points = [NSMutableArray arrayWithArray:self.originPoints];
+        }
+    }
+    
+    if (_points.count <= 1)
+        _points = [NSMutableArray arrayWithArray:_originPoints];
+    
+}
+
 
 @end

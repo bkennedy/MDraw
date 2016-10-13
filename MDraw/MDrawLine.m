@@ -81,6 +81,7 @@
         _endPoint.x += offset.width;
         _endPoint.y += offset.height;
     }
+    [self recordOrigin];
 }
 
 -(void)stopMoveHandle
@@ -99,8 +100,9 @@
     _endPoint = point;
 }
 
--(void)drawUp:(CGPoint)point
+-(void)drawUp:(CGPoint)point  frame:(CGRect)originFrame
 {
+    [self recordOrigin];
     if(self.finalized)
     {
         return;

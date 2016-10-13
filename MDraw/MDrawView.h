@@ -30,18 +30,23 @@
 #import "MDrawAngle.h"
 #import "MDrawArc.h"
 #import "MDrawText.h"
+#import "MDrawBezierFreeline.h"
 #import "MDrawComment.h"
+#import "MDrawToolDelegate.h"
+#import "ImageCreationDelegate.h"
 
 @interface MDrawView : UIView <UIGestureRecognizerDelegate,MDrawCommentDelegate>
 
+@property (nonatomic,weak) id<MDrawToolDelegate> toolDelegate;
+@property (nonatomic,weak) id<ImageCreationDelegate> imageCreationDelegate;
 
-@property (nonatomic,readonly) MDrawTool *activeTool;
+@property (nonatomic,readonly) MDrawTool *activeTool,*previousTool;
 @property (nonatomic,readonly) BOOL drawing;
 
 /**
  * The color of new drawing tool
  **/
-@property (nonatomic) UIColor *color;
+@property (nonatomic,retain) UIColor *color;
 /**
  * The default line width of new tool
  **/
@@ -82,6 +87,13 @@
  */
 @property (nonatomic,readonly) BOOL isDirty;
 
+@property (nonatomic,strong) UIImage *image;
+
+@property (nonatomic,assign) CGRect viewRect;
+
+@property (nonatomic,assign) BOOL loadedImage;
+
+
 /**
  * Undo the drawing
  **/
@@ -117,5 +129,6 @@
 -(void)clearTools;
 
 -(void)selectNone;
-
+-(void)clearDragHandles:(Class)toolType;
+- (UIImage*) markedUpImage;
 @end

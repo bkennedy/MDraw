@@ -10,8 +10,9 @@
 
 @implementation MDrawArc
 
--(void)drawUp:(CGPoint)point
+-(void)drawUp:(CGPoint)point frame:(CGRect)originFrame
 {
+    [self recordOrigin];
     _movePoint = CGPointZero;
     if(self.finalized)
     {
@@ -32,7 +33,7 @@
         CGPoint to = [_points[2] CGPointValue];
         
         CGContextSetStrokeColorWithColor(ctx, self.color.CGColor);
-        CGContextSetLineWidth(ctx, 3);
+        CGContextSetLineWidth(ctx, self.lineWidth);
         CGContextBeginPath(ctx);
         CGContextMoveToPoint(ctx, from.x, from.y);
         CGContextAddQuadCurveToPoint(ctx, arc.x, arc.y, to.x, to.y);

@@ -32,8 +32,9 @@
 
 
 
--(void)drawUp:(CGPoint)point
+-(void)drawUp:(CGPoint)point  frame:(CGRect)originFrame
 {
+    [self recordOrigin];
     _movePoint = CGPointZero;
     
     if(self.finalized)

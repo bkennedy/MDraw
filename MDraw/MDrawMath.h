@@ -44,7 +44,7 @@ CG_INLINE float CGPointToLineDistance(CGPoint p, CGPoint p1,CGPoint p2)
     float b = p2.x - p1.x;
     float c = (p1.x - b) * p1.y - p1.x * (p1.y + a);
     
-    return fabsf(a * p.x + b * p.y + c) / sqrtf(a*a + b*b);
+    return fabs(a * p.x + b * p.y + c) / sqrtf(a*a + b*b);
 }
 
 CG_INLINE BOOL CGPointInRect(CGPoint p, CGRect rect)
@@ -247,7 +247,7 @@ CG_INLINE BOOL IsCounterClockwise(CGFloat radian)
  **/
 CG_INLINE CGFloat CGPolygonArea(NSArray *points)
 {
-    int count = points.count;
+    NSUInteger count = points.count;
     int i, j;
     CGFloat area = 0;
     
@@ -263,7 +263,7 @@ CG_INLINE CGFloat CGPolygonArea(NSArray *points)
     
     area /= 2.0;
     
-    return abs(area);
+    return fabs(area);
     
 }
 

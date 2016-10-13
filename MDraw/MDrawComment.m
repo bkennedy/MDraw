@@ -10,9 +10,9 @@
 
 @implementation MDrawComment
 
--(void)drawUp:(CGPoint)point
+-(void)drawUp:(CGPoint)point  frame:(CGRect)originFrame
 {
-    [super drawUp:point];
+    [super drawUp:point frame:originFrame];
     
     [self promoteText];
 }
@@ -48,8 +48,8 @@
         
         //Give a minimize size for comment.
         CGRect frame = self.frame;
-        CGFloat width = frame.size.width < 200 ? 200 : frame.size.width;
-        CGFloat height = frame.size.height < 150 ? 150 : frame.size.height;
+        CGFloat width = frame.size.width;
+        CGFloat height = frame.size.height;
         _endPoint = CGPointMake(frame.origin.x + width, frame.origin.y + height);
         
     }
