@@ -22,5 +22,5 @@
 #import "MDrawRect.h"
 
 @interface MDrawFreeline : MDrawRect
-
+@property (nonatomic,retain) NSArray *originPoints;
 @end
